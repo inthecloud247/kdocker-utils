@@ -1,0 +1,189 @@
+#!/bin/bash
+
+set -e
+
+DIR="$( cd "$( dirname "$0" )" && pwd )"
+APPSDIR=${APPSDIR:-/mnt/apps}
+APP_PRE="kdocker"
+REPO="inthecloud247"
+BUILD_DIR=$HOME"/docker-keen"
+
+start(){
+  case "$2" in
+    openjdk7)
+      APP="$2"
+      mkdir -p $APPSDIR/$APP/data
+      mkdir -p $APPSDIR/$APP/logs
+      APPID=$(docker run \
+        -v $APPSDIR/$APP/data:/data \
+        -v $APPSDIR/$APP/logs:/logs \
+        -d \
+        $REPO/$APP_PRE-$APP)
+      DOCKERPS=$(docker ps -l=true | tail -n +2 | sed 's/\s\+/ /g' | awk '{print $2 " " $NF}')
+      DOCKERPSAPP=$(echo $DOCKERPS | awk '{print $1}')
+      DOCKERPSNAME=$(echo $DOCKERPS | awk '{print $2}')
+      echo "[OK] $DOCKERPSNAME :: $DOCKERPSAPP"
+      ;;
+    elasticsearch)
+      APP="$2"
+      mkdir -p $APPSDIR/$APP/data
+      mkdir -p $APPSDIR/$APP/logs
+      APPID=$(docker run \
+        -v $APPSDIR/$APP/data:/data \
+        -v $APPSDIR/$APP/logs:/logs \
+        -d \
+        $REPO/$APP_PRE-$APP)
+      DOCKERPS=$(docker ps -l=true | tail -n +2 | sed 's/\s\+/ /g' | awk '{print $2 " " $NF}')
+      DOCKERPSAPP=$(echo $DOCKERPS | awk '{print $1}')
+      DOCKERPSNAME=$(echo $DOCKERPS | awk '{print $2}')
+      echo "[OK] $DOCKERPSNAME :: $DOCKERPSAPP"
+      ;;
+    *)
+      echo "Usage: $0 $1 {all|ubuntu|base|elasticsearch|openjdk7}"
+      RETVAL=1
+  esac
+}
+
+debug(){
+  case "$2" in
+    ubuntu|base|elasticsearch|openjdk7)
+      APP="$2"
+      APPID=$(echo docker run \
+        $REPO/$APP_PRE-$APP)
+      ;;
+    *)
+      echo "Usage: $0 $1 {ubuntu|base|elasticsearch|openjdk7}"
+      RETVAL=1
+  esac
+  echo $APPID
+}
+
+killz(){
+  echo "Killing all $APP_PRE docker containers:"
+  docker ps | grep $APP_PRE
+  ids=`docker ps | grep $APP_PRE | tail -n +1 | cut -d ' ' -f 1`
+  echo "Killed: " `echo $ids | xargs docker kill`
+  echo "Removed: " `echo $ids | xargs docker rm`
+}
+
+stop(){
+  case "$2" in
+    openjdk7|elasticsearch)
+      echo "Stopping all $APP_PRE-$2 docker containers:"
+      docker ps | grep $APP_PRE-$2
+      ids=`docker ps | grep $APP_PRE-$2 | tail -n +1 | cut -d ' ' -f 1`
+      echo "Stopped:  " `echo $ids | xargs docker stop`
+      echo "Removed: " `echo $ids | xargs docker rm`
+      ;;
+    all)
+      echo "Stopping all $APP_PRE docker containers:"
+      docker ps | grep $APP_PRE
+      ids=`docker ps | grep $APP_PRE | tail -n +1 | cut -d ' ' -f 1`
+      echo "Stopped:  " `echo $ids | xargs docker stop`
+      echo "Removed: " `echo $ids | xargs docker rm`
+      ;;
+    *)
+      echo "Usage: $0 $1 {all|ubuntu|base|openjdk7|elasticsearch}"
+      RETVAL=1
+  esac
+}
+
+build(){
+  case "$2" in
+    all)
+      for p in ubuntu base openjdk7 elasticsearch;
+        do
+          docker build -t="$REPO/$APP_PRE-$p" $BUILD_DIR/$APP_PRE-$p/.
+        done;
+      ;;
+    ubuntu|base|openjdk7|elasticsearch)
+      docker build -t="$REPO/$APP_PRE-$2" $BUILD_DIR/$APP_PRE-$2/.
+      ;;
+    *)
+      echo "Usage: $0 $1 {all|ubuntu|base|openjdk7|elasticsearch}"
+      RETVAL=1
+  esac
+}
+
+rebuild(){
+  case "$2" in
+    all)
+      for p in ubuntu base openjdk7 elasticsearch;
+        do
+          docker build -t="$REPO/$APP_PRE-$p" $BUILD_DIR/$APP_PRE-$p/.
+        done;
+      ;;
+    ubuntu)
+      for p in ubuntu;
+        do
+          docker build -t="$REPO/$APP_PRE-$p" $BUILD_DIR/$APP_PRE-$p/.
+        done;
+      ;;
+    base)
+      for p in ubuntu $2;
+        do
+          docker build -t="$REPO/$APP_PRE-$p" $BUILD_DIR/$APP_PRE-$p/.
+        done;
+      ;;
+    openjdk7)
+      for p in ubuntu base $2;
+        do
+          docker build -t="$REPO/$APP_PRE-$p" $BUILD_DIR/$APP_PRE-$p/.
+        done;
+      ;;
+    elasticsearch)
+      for p in ubuntu base openjdk $2;
+        do
+          docker build -t="$REPO/$APP_PRE-$p" $BUILD_DIR/$APP_PRE-$p/.
+        done;
+      ;;
+    *)
+      echo "Usage: $0 $1 {all|ubuntu|base|openjdk7|elasticsearch}"
+      RETVAL=1
+  esac
+}
+
+cleanup(){
+  echo "NOT YET IMPLEMENTED. This will eventually safely clean up old stopped containers lying around."
+
+}
+
+update(){
+  for p in ubuntu base openjdk7 elasticsearch;
+    do
+      docker pull $REPO/$APP_PRE-$p
+    done;
+}
+
+case "$1" in
+  restart)
+    killz $@ && start $@
+    ;;
+  start)
+    start $@
+    ;;
+  stop)
+    stop $@
+    ;;
+  kill)
+    killz $@
+    ;;
+  debug)
+    debug $@
+    ;;
+  build)
+    build $@
+    ;;
+  rebuild)
+    rebuild $@
+    ;;
+  update)
+    update
+    ;;
+  status)
+    docker ps
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|kill|update|build|rebuild|debug|status|ssh}"
+    RETVAL=1
+esac
