@@ -12,11 +12,17 @@ start(){
   case "$2" in
     openjdk7)
       APP="$2"
-      mkdir -p $APPSDIR/$APP/data
-      mkdir -p $APPSDIR/$APP/logs
       APPID=$(docker run \
-        -v $APPSDIR/$APP/data:/data \
-        -v $APPSDIR/$APP/logs:/logs \
+        -d \
+        $REPO/$APP_PRE-$APP)
+      DOCKERPS=$(docker ps -l=true | tail -n +2 | sed 's/\s\+/ /g' | awk '{print $2 " " $NF}')
+      DOCKERPSAPP=$(echo $DOCKERPS | awk '{print $1}')
+      DOCKERPSNAME=$(echo $DOCKERPS | awk '{print $2}')
+      echo "[OK] $DOCKERPSNAME :: $DOCKERPSAPP"
+      ;;
+    etcd)
+      APP="$2"
+      APPID=$(docker run \
         -d \
         $REPO/$APP_PRE-$APP)
       DOCKERPS=$(docker ps -l=true | tail -n +2 | sed 's/\s\+/ /g' | awk '{print $2 " " $NF}')
@@ -26,11 +32,9 @@ start(){
       ;;
     elasticsearch)
       APP="$2"
-      mkdir -p $APPSDIR/$APP/data
-      mkdir -p $APPSDIR/$APP/logs
+#      mkdir -p $APPSDIR/$APP/data
       APPID=$(docker run \
-        -v $APPSDIR/$APP/data:/data \
-        -v $APPSDIR/$APP/logs:/logs \
+#        -v $APPSDIR/$APP/data:/data \
         -d \
         $REPO/$APP_PRE-$APP)
       DOCKERPS=$(docker ps -l=true | tail -n +2 | sed 's/\s\+/ /g' | awk '{print $2 " " $NF}')
@@ -91,16 +95,16 @@ stop(){
 build(){
   case "$2" in
     all)
-      for p in ubuntu base openjdk7 elasticsearch;
+      for p in ubuntu base openjdk7 elasticsearch etcd;
         do
           docker build -t="$REPO/$APP_PRE-$p" $BUILD_DIR/$APP_PRE-$p/.
         done;
       ;;
-    ubuntu|base|openjdk7|elasticsearch)
+    ubuntu|base|openjdk7|elasticsearch|etcd)
       docker build -t="$REPO/$APP_PRE-$2" $BUILD_DIR/$APP_PRE-$2/.
       ;;
     *)
-      echo "Usage: $0 $1 {all|ubuntu|base|openjdk7|elasticsearch}"
+      echo "Usage: $0 $1 {all|ubuntu|base|openjdk7|elasticsearch|etcd}"
       RETVAL=1
   esac
 }
