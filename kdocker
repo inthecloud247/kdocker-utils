@@ -10,7 +10,7 @@ BUILD_DIR=$HOME"/docker-keen"
 
 start(){
   case "$2" in
-    openjdk7)
+    base|ubuntu)
       APP="$2"
       APPID=$(docker run \
         -d \
@@ -20,7 +20,7 @@ start(){
       DOCKERPSNAME=$(echo $DOCKERPS | awk '{print $2}')
       echo "[OK] $DOCKERPSNAME :: $DOCKERPSAPP"
       ;;
-    etcd)
+    openjdk7)
       APP="$2"
       APPID=$(docker run \
         -d \
@@ -42,21 +42,31 @@ start(){
       DOCKERPSNAME=$(echo $DOCKERPS | awk '{print $2}')
       echo "[OK] $DOCKERPSNAME :: $DOCKERPSAPP"
       ;;
+    etcd)
+      APP="$2"
+      APPID=$(docker run \
+        -d \
+        $REPO/$APP_PRE-$APP)
+      DOCKERPS=$(docker ps -l=true | tail -n +2 | sed 's/\s\+/ /g' | awk '{print $2 " " $NF}')
+      DOCKERPSAPP=$(echo $DOCKERPS | awk '{print $1}')
+      DOCKERPSNAME=$(echo $DOCKERPS | awk '{print $2}')
+      echo "[OK] $DOCKERPSNAME :: $DOCKERPSAPP"
+      ;;
     *)
-      echo "Usage: $0 $1 {all|ubuntu|base|elasticsearch|openjdk7}"
+      echo "Usage: $0 $1 {ubuntu|base|openjdk7|elasticsearch|etcd}"
       RETVAL=1
   esac
 }
 
 debug(){
   case "$2" in
-    ubuntu|base|elasticsearch|openjdk7)
+    ubuntu|base|elasticsearch|openjdk7|etcd)
       APP="$2"
       APPID=$(echo docker run \
         $REPO/$APP_PRE-$APP)
       ;;
     *)
-      echo "Usage: $0 $1 {ubuntu|base|elasticsearch|openjdk7}"
+      echo "Usage: $0 $1 {ubuntu|base|elasticsearch|openjdk7|etcd}"
       RETVAL=1
   esac
   echo $APPID
@@ -72,7 +82,7 @@ killz(){
 
 stop(){
   case "$2" in
-    openjdk7|elasticsearch)
+    ubuntu|base|openjdk7|elasticsearch|etcd)
       echo "Stopping all $APP_PRE-$2 docker containers:"
       docker ps | grep $APP_PRE-$2
       ids=`docker ps | grep $APP_PRE-$2 | tail -n +1 | cut -d ' ' -f 1`
@@ -87,7 +97,7 @@ stop(){
       echo "Removed: " `echo $ids | xargs docker rm`
       ;;
     *)
-      echo "Usage: $0 $1 {all|ubuntu|base|openjdk7|elasticsearch}"
+      echo "Usage: $0 $1 {all|ubuntu|base|openjdk7|elasticsearch|etcd}"
       RETVAL=1
   esac
 }
